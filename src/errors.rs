@@ -65,6 +65,11 @@ error_chain! {
             description("JS exception")
             display("JS exception")
         }
+                /// A JS exception was thrown
+        NeonJs(throw: neon::result::Throw) {
+            description("JS exception")
+            display("JS exception")
+        }
         // failed to convert something to f64
         CastError {
             description("CastError")
@@ -72,6 +77,8 @@ error_chain! {
         }
     }
 }
+
+unsafe impl Send for Error {}
 
 impl ser::Error for Error {
     fn custom<T: Display>(msg: T) -> Self {
@@ -94,6 +101,17 @@ impl From<Error> for Throw {
         unsafe {
             neon_runtime::error::throw_error_from_utf8(neon_sys::Isolate::from(std::ptr::null_mut()),msg.as_ptr(), msg.len() as i32);
             Throw
+        }
+    }
+}
+
+
+impl From<neon::result::Throw> for Error {
+    fn from(err: neon::result::Throw) -> Self {
+        let msg = format!("{:?}", err);
+        unsafe {
+            neon_runtime::error::throw_error_from_utf8(neon_sys::Isolate::from(std::ptr::null_mut()),msg.as_ptr(), msg.len() as i32);
+            ErrorKind::NeonJs(err).into()
         }
     }
 }
